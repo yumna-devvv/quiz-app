@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Take Test</title>
+</head>
+<body>
+    <h2>Take a Test</h2>
+
+    <form method="POST" action="/check-test">
+        <label for="sectionSelect">Section:</label>
+        <select id="sectionSelect" name="sectionName">
+            <!-- Options will be added by the server -->
+        </select>
+        <br><br>
+
+        <label for="subsectionSelect">Subsection:</label>
+        <select id="subsectionSelect" name="subsectionName">
+            <!-- Options will be added by the server -->
+        </select>
+        <br><br>
+
+        <div id="questionsContainer">
+            <!-- Questions will be added by the server later -->
+        </div>
+
+        <button type="submit">Submit Test</button>
+    </form>
+</body>
+</html>
+

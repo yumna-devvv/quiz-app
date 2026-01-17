@@ -1,0 +1,18 @@
+SECTION|oop
+SUBSECTION|into to oop
+SECTION|Math
+SUBSECTION|division
+QUESTION|what is 12/2
+OPTION|2
+OPTION|4
+OPTION|6
+OPTION|8
+ANSWER|2
+SECTION|science
+SUBSECTION|elements
+QUESTION|what is solid?
+OPTION|take the shape of the container
+OPTION|hard, doest take the shape on container
+OPTION|we cant see it
+OPTION|change shape and size
+ANSWER|1
