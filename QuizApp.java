@@ -1,5 +1,10 @@
 import java.util.Scanner;
 import java.util.ArrayList;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 
 public class QuizApp{
    private static Scanner input= new Scanner(System.in);
@@ -16,7 +21,7 @@ public class QuizApp{
        System.out.println("\n ===== Quiz App Menu ====");
        System.out.println("1. Add Section" );
        System.out.println("2. Add subsection" );
-       System.out.println("3. Add question " );
+       System.out.println("3. Add question (custom or AI generated) " );
        System.out.println("4. Delete ");
        System.out.println("5. Take Test" );
        System.out.println("6. Exit" );
@@ -148,61 +153,160 @@ public class QuizApp{
 
     Subsection selectedSubsection = subsections.get(subsectionIndex);
 
+
     // 4. Add questions
-    boolean addMoreQuestions = true;
+    System.out.println("Do you want to (1) Add your own question or (2) Get an AI-generated question?");
+    int choice = input.nextInt();
+    input.nextLine();
+    
 
-    while (addMoreQuestions) {
+    if (choice == 1){
+        boolean addMoreQuestions = true;
 
-        System.out.println("Enter the question:");
-        String questionText = input.nextLine();
+        while (addMoreQuestions) {
 
-        String[] options = new String[4];
-        for (int i = 0; i < 4; i++) {
-            System.out.println("Enter option " + (i + 1) + ":");
-            options[i] = input.nextLine();
-        }
+            System.out.println("Enter the question:");
+            String questionText = input.nextLine();
 
-        int correctIndex = -1;
-
-        while (true) {
-            try {
-                System.out.print("Enter correct option (1-4): ");
-                int correctChoice = input.nextInt();
-                input.nextLine(); 
-
-                if (correctChoice < 1 || correctChoice > 4) {
-                    System.out.println("Please enter a number between 1 and 4.");
-                    continue;
-                }
-
-                correctIndex = correctChoice - 1;
-                break;
-
-            } catch (Exception e) {
-                System.out.println("Invalid input. Please enter a number.");
-                input.nextLine();
+            String[] options = new String[4];
+            for (int i = 0; i < 4; i++) {
+                System.out.println("Enter option " + (i + 1) + ":");
+                options[i] = input.nextLine();
             }
+
+            int correctIndex = -1;
+
+            while (true) {
+                try {
+                    System.out.print("Enter correct option (1-4): ");
+                    int correctChoice = input.nextInt();
+                    input.nextLine(); 
+
+                    if (correctChoice < 1 || correctChoice > 4) {
+                        System.out.println("Please enter a number between 1 and 4.");
+                        continue;
+                    }
+
+                    correctIndex = correctChoice - 1;
+                    break;
+
+                } catch (Exception e) {
+                    System.out.println("Invalid input. Please enter a number.");
+                    input.nextLine();
+                }
+            }
+
+            Question question = new Question(questionText, options, correctIndex);
+            selectedSubsection.addQuestion(question);
+
+            FileManager.save("Question| "+ questionText);
+            for (String opt: options){
+                FileManager.save("OPTION| "+ opt);
+            }
+            FileManager.save("ANSWER| "+ correctIndex);
+
+
+            System.out.println("Question added successfully!");
+
+            System.out.println("Add another question? (yes/no)");
+            String answer = input.nextLine();
+            if (!answer.equalsIgnoreCase("yes")) {
+                addMoreQuestions = false;
+            }
+        }}
+        else if(choice == 2){
+           // cal the AI API to generate the questions 
+           String aiQuestions = fetchAIQuestion();
+           if(aiQuestions != null){
+            System.out.println("Ai generated questions: "+ aiQuestions);
+           }
+           else {
+            System.out.println("Failed to fetch ai generated quetions");
+           }
+
         }
-
-        Question question = new Question(questionText, options, correctIndex);
-        selectedSubsection.addQuestion(question);
-
-        FileManager.save("Question| "+ questionText);
-        for (String opt: options){
-            FileManager.save("OPTION| "+ opt);
+        else {
+            System.out.println("Invalid choice.");
         }
-        FileManager.save("ANSWER| "+ correctIndex);
-
-
-        System.out.println("Question added successfully!");
-
-        System.out.println("Add another question? (yes/no)");
-        String answer = input.nextLine();
-        if (!answer.equalsIgnoreCase("yes")) {
-            addMoreQuestions = false;
-        }
-    }
    }
+   
+   public static String fetchAIQuestion(){
+    System.out.print("Enter a topic for AI-generated question(s): ");
+    String topic = input.nextLine();
+    try{
+        URL url = new URL("https://api.openai.com/v1/chat/completions");
+
+        HttpURLConnection conn =(HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setRequestProperty("Authorization", "Bearer YOUR_OPENAI_API_KEY_HERE");
+        conn.setDoOutput(true);
+
+        String jsonInputString = String.format(
+    """
+    {
+      "model": "gpt-3.5-turbo",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful quiz question generator. Return your output strictly in JSON format: { 'question': '...', 'options': ['...','...','...','...'], 'answerIndex': 0 }"
+        },
+        {
+          "role": "user",
+          "content": "Generate 1 multiple-choice question on %s"
+        }
+      ]
+    }
+    """,
+    topic
+);
+
+
+        try(OutputStream os =conn.getOutputStream()){
+            byte[] input=jsonInputString.getBytes("utf-8");
+            os.write(input, 0, input.length);
+        }
+
+        int responseCode=conn.getResponseCode();
+        if(responseCode == HttpURLConnection.HTTP_OK){
+
+        BufferedReader br= new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"));
+        StringBuilder response = new StringBuilder();
+        String responseLine;
+
+        while((responseLine = br.readLine()) != null){
+            response.append(responseLine.trim());
+
+        }
+        return extractQuestionFromResponse(response.toString());
+    } else {
+        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "utf-8"));
+        StringBuilder errorResponse = new StringBuilder();
+        String errorLine;
+
+        while((errorLine = br.readLine())!= null){
+            errorResponse.append(errorLine.trim());
+        }
+        System.out.println("Error Response: "+ errorResponse.toString());
+        return null;
+    }
+
+    } catch (Exception e){
+        e.printStackTrace();
+        return null;
+    }
+
+   }
+
+
+   private static String extractQuestionFromResponse(String jsonResponse) {   
+       int startIndex = jsonResponse.indexOf("\"content\":\"") + 12; 
+       int endIndex = jsonResponse.indexOf("\"}", startIndex);    
+       return jsonResponse.substring(startIndex, endIndex);
+    }
+
+
+
     public static void addQuestion(Subsection subsection, String questionText, String[] options, int correctIndex) {
         if (subsection != null) {
             subsection.addQuestion(new Question(questionText, options, correctIndex));
