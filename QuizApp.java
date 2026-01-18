@@ -239,7 +239,8 @@ public class QuizApp{
         HttpURLConnection conn =(HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json");
-        conn.setRequestProperty("Authorization", "Bearer YOUR_OPENAI_API_KEY_HERE");
+        String apiKey = System.getenv("OPENAI_API_KEY");
+        conn.setRequestProperty("Authorization", "Bearer " + apiKey);
         conn.setDoOutput(true);
 
         String jsonInputString = String.format(
